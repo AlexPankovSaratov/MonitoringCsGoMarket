@@ -68,6 +68,7 @@ namespace MonitoringCsGoMarket
 
 		internal static void SearchingItemsMarket()
 		{
+			SendMessage("Start searching items market");
 			while (true)
 			{
 				foreach (var linkItem in GetAllLinksByItem())
@@ -82,7 +83,7 @@ namespace MonitoringCsGoMarket
 			while (true)
 			{
 				Thread.Sleep(delayAtMonitoringMarket);
-				if (testMode) Console.WriteLine($"Run MonitoringСurrentShoppingList. Count items in list = {currentShoppingList.Count()}");
+				if (testMode) SendMessage($"Run MonitoringСurrentShoppingList. Count items in list = {currentShoppingList.Count()}");
 				foreach (var key in currentShoppingList.Keys)
 				{
 					CheckItem(new StringBuilder(key), delayAtCheckItem);
@@ -132,9 +133,9 @@ namespace MonitoringCsGoMarket
 			if (!NeedAddItemToCurrentShoppingList(linkItem, maxCostAutoBuy, curentType, curMinCost)) return;
 			if (!currentShoppingList.ContainsKey(linkItem.ToString().ToLower()))
 			{
-				Console.WriteLine(linkItem);
-				Console.WriteLine($"maxCost = {maxCostAutoBuy}");
-				Console.WriteLine($"CurMinCost = {curMinCost}");
+				SendMessage(linkItem.ToString());
+				SendMessage($"maxCost = {maxCostAutoBuy}");
+				SendMessage($"CurMinCost = {curMinCost}");
 
 				CreateBuyItem(linkItem, maxCostAutoBuy + 0.01m);
 				bool ItemAdded = false;
@@ -195,7 +196,7 @@ namespace MonitoringCsGoMarket
 			{
 				StreamReader reader = new StreamReader(dataStream);
 				string responseFromServer = reader.ReadToEnd();
-				if (testMode) Console.WriteLine(responseFromServer);
+				if (testMode) SendMessage(responseFromServer);
 			}
 		}
 
@@ -284,6 +285,10 @@ namespace MonitoringCsGoMarket
 				}
 			}
 			return maxCost;
+		}
+		private static void SendMessage(string message)
+		{
+			Console.WriteLine(message);
 		}
 	}
 }
