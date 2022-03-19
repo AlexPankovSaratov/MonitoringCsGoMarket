@@ -1,4 +1,5 @@
 ﻿using HtmlAgilityPack;
+using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -13,39 +14,40 @@ namespace MonitoringCsGoMarket
 {
 	internal static class MarketManager
 	{
+		private static IConfigurationRoot appSettings = new ConfigurationBuilder().AddJsonFile("appSettings.json").Build();
 		/// <summary>
 		/// Режим тестирования (Дополнительные вывод ы консоль и стоимость покупки = 0.1)
 		/// </summary>
-		private static bool testMode = true;
+		private static bool testMode = bool.Parse(appSettings["testMode"]);
 		#region Конфигурация покупок
 		/// <summary>
 		/// Задержка проверки стоимость товара при поиске
 		/// </summary>
-		private static int delayAtCheckItem = 500;
+		private static int delayAtCheckItem = int.Parse(appSettings["delayAtCheckItem"]);
 		/// <summary>
 		/// Задержка актуализации стоимость текущих покупок
 		/// </summary>
-		private static int delayAtMonitoringMarket = 60000;
+		private static int delayAtMonitoringMarket = int.Parse(appSettings["delayAtMonitoringMarket"]);
 		/// <summary>
 		/// Процент вычитаемый  от прибыли
 		/// </summary>
-		private static int commissionPercentage = 10;
+		private static int commissionPercentage = int.Parse(appSettings["commissionPercentage"]);
 		/// <summary>
 		/// Профит в рублях
 		/// </summary>
-		private static int acceptableProfit = 3000;
+		private static int acceptableProfit = int.Parse(appSettings["acceptableProfit"]);
 		/// <summary>
 		/// Текущий баланс в рублях
 		/// </summary>
-		private static int currentMoney = 10000;
+		private static int currentMoney = int.Parse(appSettings["currentMoney"]);
 		/// <summary>
 		/// Минимальная стоимость товара
 		/// </summary>
-		private static int minMoney = 7000;
+		private static int minMoney = int.Parse(appSettings["minMoney"]);
 		/// <summary>
 		/// Минимальная кол-вол предметов сейчас напродаже
 		/// </summary>
-		private static int minCountItem = 5;
+		private static int minCountItem = int.Parse(appSettings["minCountItem"]);
 		#endregion
 
 		#region Конфигурация маркета
