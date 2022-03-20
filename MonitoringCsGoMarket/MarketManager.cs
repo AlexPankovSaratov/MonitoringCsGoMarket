@@ -62,6 +62,7 @@ namespace MonitoringCsGoMarket
 
 		#region Технические данные
 		private static ConcurrentDictionary<string, decimal> currentShoppingList = new ConcurrentDictionary<string, decimal>();
+		private static ConcurrentDictionary<string, decimal> currentShoppingBlockList = new ConcurrentDictionary<string, decimal>();
 		private static int countPages = 0;
 		#endregion
 
@@ -131,13 +132,30 @@ namespace MonitoringCsGoMarket
 			string curentType = GetCurentType(HD);
 			decimal curMinCost = GetCurMinCost(HD, curentType);
 			if (!NeedAddItemToCurrentShoppingList(linkItem, maxCostAutoBuy, curentType, curMinCost)) return;
+			if (currentShoppingBlockList.ContainsKey(linkItem.ToString().ToLower())) return;
 			if (!currentShoppingList.ContainsKey(linkItem.ToString().ToLower()))
 			{
+				SendMessage("");
 				SendMessage(linkItem.ToString());
 				SendMessage($"maxCost = {maxCostAutoBuy}");
 				SendMessage($"CurMinCost = {curMinCost}");
 
+				if(testMode == false)
+				{
+					if (!GetPermissionFromAdmin()) 
+					{
+						bool ItemAddedBlock = false;
+						while (!ItemAddedBlock)
+						{
+							ItemAddedBlock = currentShoppingBlockList.TryAdd(linkItem.ToString().ToLower(), maxCostAutoBuy + 0.01m);
+						}
+						SendMessage("Предмет добавлен в блок");
+						return;
+					}
+				}
+
 				CreateBuyItem(linkItem, maxCostAutoBuy + 0.01m);
+				SendMessage("Предмет добавлен в список покупок");
 				bool ItemAdded = false;
 				while (!ItemAdded)
 				{
@@ -151,6 +169,20 @@ namespace MonitoringCsGoMarket
 					CreateBuyItem(linkItem, maxCostAutoBuy + 0.01m);
 					currentShoppingList[linkItem.ToString().ToLower()] = maxCostAutoBuy + 0.01m;
 				}
+			}
+		}
+
+		private static bool GetPermissionFromAdmin()
+		{
+			SendMessage("Разрешить ли покупку данного предмета? yes - да, else - нет");
+			var userMessage = GetUserMessage();
+			if (userMessage ==  "yes")
+			{
+				return true;
+			}
+			else
+			{
+				return false;
 			}
 		}
 
@@ -291,6 +323,11 @@ namespace MonitoringCsGoMarket
 		private static void SendMessage(string message)
 		{
 			Console.WriteLine(message);
+		}
+
+		private static string GetUserMessage()
+		{
+			return Console.ReadLine().ToLower();
 		}
 	}
 }
