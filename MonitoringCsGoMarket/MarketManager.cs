@@ -3,10 +3,12 @@ using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 
@@ -19,6 +21,7 @@ namespace MonitoringCsGoMarket
 		/// Режим тестирования (Дополнительные вывод ы консоль и стоимость покупки = 0.1)
 		/// </summary>
 		private static bool testMode = bool.Parse(appSettings["testMode"]);
+
 		#region Конфигурация покупок
 		/// <summary>
 		/// Задержка проверки стоимость товара при поиске
@@ -69,7 +72,7 @@ namespace MonitoringCsGoMarket
 
 		internal static void SearchingItemsMarket()
 		{
-			SendMessage("Start searching items market");
+			UserInteractionManager.SendMessage("Start searching items market");
 			while (true)
 			{
 				foreach (var linkItem in GetAllLinksByItem())
@@ -84,7 +87,7 @@ namespace MonitoringCsGoMarket
 			while (true)
 			{
 				Thread.Sleep(delayAtMonitoringMarket);
-				if (testMode) SendMessage($"Run MonitoringСurrentShoppingList. Count items in list = {currentShoppingList.Count()}");
+				if (testMode) UserInteractionManager.SendMessage($"Run MonitoringСurrentShoppingList. Count items in list = {currentShoppingList.Count()}");
 				foreach (var key in currentShoppingList.Keys)
 				{
 					CheckItem(new StringBuilder(key), delayAtCheckItem);
@@ -135,10 +138,10 @@ namespace MonitoringCsGoMarket
 			if (currentShoppingBlockList.ContainsKey(linkItem.ToString().ToLower())) return;
 			if (!currentShoppingList.ContainsKey(linkItem.ToString().ToLower()))
 			{
-				SendMessage("");
-				SendMessage(linkItem.ToString());
-				SendMessage($"maxCost = {maxCostAutoBuy}");
-				SendMessage($"CurMinCost = {curMinCost}");
+				UserInteractionManager.SendMessage("");
+				UserInteractionManager.SendMessage(linkItem.ToString());
+				UserInteractionManager.SendMessage($"maxCost = {maxCostAutoBuy}");
+				UserInteractionManager.SendMessage($"CurMinCost = {curMinCost}");
 
 				if(testMode == false)
 				{
@@ -149,13 +152,13 @@ namespace MonitoringCsGoMarket
 						{
 							ItemAddedBlock = currentShoppingBlockList.TryAdd(linkItem.ToString().ToLower(), maxCostAutoBuy + 0.01m);
 						}
-						SendMessage("Предмет добавлен в блок");
+						UserInteractionManager.SendMessage("Предмет добавлен в блок");
 						return;
 					}
 				}
 
 				CreateBuyItem(linkItem, maxCostAutoBuy + 0.01m);
-				SendMessage("Предмет добавлен в список покупок");
+				UserInteractionManager.SendMessage("Предмет добавлен в список покупок");
 				bool ItemAdded = false;
 				while (!ItemAdded)
 				{
@@ -174,8 +177,9 @@ namespace MonitoringCsGoMarket
 
 		private static bool GetPermissionFromAdmin()
 		{
-			SendMessage("Разрешить ли покупку данного предмета? yes - да, else - нет");
-			var userMessage = GetUserMessage();
+			UserInteractionManager.SendMessage("Разрешить ли покупку данного предмета? yes - да, else - нет");
+			FlashWindowManager.Flash();
+			var userMessage = UserInteractionManager.GetUserMessage();
 			if (userMessage ==  "yes")
 			{
 				return true;
@@ -229,7 +233,7 @@ namespace MonitoringCsGoMarket
 			{
 				StreamReader reader = new StreamReader(dataStream);
 				string responseFromServer = reader.ReadToEnd();
-				if (testMode) SendMessage(responseFromServer);
+				if (testMode) UserInteractionManager.SendMessage(responseFromServer);
 			}
 		}
 
@@ -318,16 +322,6 @@ namespace MonitoringCsGoMarket
 				}
 			}
 			return maxCost;
-		}
-
-		private static void SendMessage(string message)
-		{
-			Console.WriteLine(message);
-		}
-
-		private static string GetUserMessage()
-		{
-			return Console.ReadLine().ToLower();
 		}
 	}
 }
