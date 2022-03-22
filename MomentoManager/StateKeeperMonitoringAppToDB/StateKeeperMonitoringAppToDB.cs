@@ -6,17 +6,21 @@ namespace StateKeeperMonitoringApp
 {
 	public class StateKeeperMonitoringAppToDB : IStateKeeperMonitoringApp
 	{
-		public StateKeeperMonitoringAppToDB()
+		private string _dbConnection;
+
+		public StateKeeperMonitoringAppToDB(string dbConnection)
 		{
-			using (ContextDb contextDb = new ContextDb())
+			_dbConnection = dbConnection;
+			using (ContextDb contextDb = new ContextDb(_dbConnection))
 			{
 				contextDb.Database.EnsureCreated();
 			}
 		}
+
 		public MomentoMonitoringApp GetState()
 		{
 			var momentoMonitoringApp = new MomentoMonitoringApp(new ConcurrentDictionary<string, decimal>(),  new ConcurrentDictionary<string, decimal>());
-			using (ContextDb contextDb = new ContextDb())
+			using (ContextDb contextDb = new ContextDb(_dbConnection))
 			{
 				foreach (var item in contextDb.ShoppingItemBuy)
 				{
@@ -55,7 +59,7 @@ namespace StateKeeperMonitoringApp
 			{
 				newShoppingItemsBlock.Add(new ShoppingItemBlock { TextLink = item.Key, Price = item.Value });
 			}
-			using (ContextDb contextDb = new ContextDb())
+			using (ContextDb contextDb = new ContextDb(_dbConnection))
 			{
 				foreach (var item in newShoppingItemsBuy)
 				{

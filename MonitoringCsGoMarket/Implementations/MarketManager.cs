@@ -22,7 +22,7 @@ namespace MonitoringCsGoMarket.Implementations
 		private static ConcurrentDictionary<string, decimal> _currentShoppingBlockList = new ConcurrentDictionary<string, decimal>();
 		private static int countPages = 0;
 		private static IUserInteractionManager _userManager = new ConsoleUserInteractionManager();
-		private static IStateKeeperMonitoringApp _stateKeeperMonitoringApp = new StateKeeperMonitoringAppToDB();
+		private static IStateKeeperMonitoringApp _stateKeeperMonitoringApp = new StateKeeperMonitoringAppToDB(_appSettings["dbConnection"]);
 		#endregion
 		#region Конфигурация покупок
 		/// <summary>
