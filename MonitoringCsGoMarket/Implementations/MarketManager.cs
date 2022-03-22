@@ -1,83 +1,83 @@
 ﻿using HtmlAgilityPack;
 using Microsoft.Extensions.Configuration;
+using MomentoManager;
+using MonitoringCsGoMarket.Abstractions;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 
-namespace MonitoringCsGoMarket
+namespace MonitoringCsGoMarket.Implementations
 {
 	internal static class MarketManager
 	{
-		private static IConfigurationRoot appSettings = new ConfigurationBuilder().AddJsonFile("appSettings.json").Build();
+		#region Технические данные
+		private static IConfigurationRoot _appSettings = new ConfigurationBuilder().AddJsonFile("appSettings.json").Build();
+		private static ConcurrentDictionary<string, decimal> _currentShoppingList = new ConcurrentDictionary<string, decimal>();
+		private static ConcurrentDictionary<string, decimal> _currentShoppingBlockList = new ConcurrentDictionary<string, decimal>();
+		private static int countPages = 0;
+		private static IUserInteractionManager _userManager = new ConsoleUserInteractionManager();
+		private static IStateKeeperMonitoringApp _stateKeeperMonitoringApp = new StateKeeperMonitoringAppToDB();
+		#endregion
+		#region Конфигурация покупок
 		/// <summary>
 		/// Режим тестирования (Дополнительные вывод ы консоль и стоимость покупки = 0.1)
 		/// </summary>
-		private static bool testMode = bool.Parse(appSettings["testMode"]);
-
-		#region Конфигурация покупок
+		private static bool _testMode = bool.Parse(_appSettings["testMode"]);
 		/// <summary>
 		/// Задержка проверки стоимость товара при поиске
 		/// </summary>
-		private static int delayAtCheckItem = int.Parse(appSettings["delayAtCheckItem"]);
+		private static int _delayAtCheckItem = int.Parse(_appSettings["delayAtCheckItem"]);
 		/// <summary>
 		/// Задержка актуализации стоимость текущих покупок
 		/// </summary>
-		private static int delayAtMonitoringMarket = int.Parse(appSettings["delayAtMonitoringMarket"]);
+		private static int _delayAtMonitoringMarket = int.Parse(_appSettings["delayAtMonitoringMarket"]);
 		/// <summary>
 		/// Процент вычитаемый  от прибыли
 		/// </summary>
-		private static int commissionPercentage = int.Parse(appSettings["commissionPercentage"]);
+		private static int _commissionPercentage = int.Parse(_appSettings["commissionPercentage"]);
 		/// <summary>
 		/// Профит в рублях
 		/// </summary>
-		private static int acceptableProfit = int.Parse(appSettings["acceptableProfit"]);
+		private static int _acceptableProfit = int.Parse(_appSettings["acceptableProfit"]);
 		/// <summary>
 		/// Текущий баланс в рублях
 		/// </summary>
-		private static int currentMoney = int.Parse(appSettings["currentMoney"]);
+		private static int _currentMoney = int.Parse(_appSettings["currentMoney"]);
 		/// <summary>
 		/// Минимальная стоимость товара
 		/// </summary>
-		private static int minMoney = int.Parse(appSettings["minMoney"]);
+		private static int _minMoney = int.Parse(_appSettings["minMoney"]);
 		/// <summary>
 		/// Минимальная кол-вол предметов сейчас напродаже
 		/// </summary>
-		private static int minCountItem = int.Parse(appSettings["minCountItem"]);
+		private static int _minCountItem = int.Parse(_appSettings["minCountItem"]);
 		#endregion
-
 		#region Конфигурация маркета
-		private static StringBuilder mainUrlPage = new StringBuilder("https://market.csgo.com");
-		private static StringBuilder subUrlPages = new StringBuilder($"?t=all&p=#pagenumber#&rs={minMoney};{currentMoney*2}&sd=desc");
-		private static StringBuilder mainUrlBuy = new StringBuilder("https://market.csgo.com/orders/insert/");
-		private static NumberFormatInfo priceSplitSeparator = new NumberFormatInfo { NumberDecimalSeparator = "." };
-		private static Dictionary<string, string> replacСharsInType = new Dictionary<string, string> { 
+		private static StringBuilder _mainUrlPage = new StringBuilder("https://market.csgo.com");
+		private static StringBuilder _subUrlPages = new StringBuilder($"?t=all&p=#pagenumber#&rs={_minMoney};{_currentMoney*2}&sd=desc");
+		private static StringBuilder _mainUrlBuy = new StringBuilder("https://market.csgo.com/orders/insert/");
+		private static NumberFormatInfo _priceSplitSeparator = new NumberFormatInfo { NumberDecimalSeparator = "." };
+		private static Dictionary<string, string> _replacСharsInType = new Dictionary<string, string> { 
 			{ "ё", "е" } 
 		};
-		#endregion
-
-		#region Технические данные
-		private static ConcurrentDictionary<string, decimal> currentShoppingList = new ConcurrentDictionary<string, decimal>();
-		private static ConcurrentDictionary<string, decimal> currentShoppingBlockList = new ConcurrentDictionary<string, decimal>();
-		private static int countPages = 0;
 		#endregion
 
 
 		internal static void SearchingItemsMarket()
 		{
-			UserInteractionManager.SendMessage("Start searching items market");
+			RestoreStateApp();
+			_userManager.SendUserMessage("Start searching items market");
 			while (true)
 			{
 				foreach (var linkItem in GetAllLinksByItem())
 				{
-					CheckItem(linkItem, delayAtCheckItem);
+					CheckItem(linkItem, _delayAtCheckItem);
 				}
 			}
 		}
@@ -86,14 +86,16 @@ namespace MonitoringCsGoMarket
 		{
 			while (true)
 			{
-				Thread.Sleep(delayAtMonitoringMarket);
-				if (testMode) UserInteractionManager.SendMessage($"Run MonitoringСurrentShoppingList. Count items in list = {currentShoppingList.Count()}");
-				foreach (var key in currentShoppingList.Keys)
+				Thread.Sleep(_delayAtMonitoringMarket);
+				if (_testMode) _userManager.SendUserMessage($"Run MonitoringСurrentShoppingList. Count items in list = {_currentShoppingList.Count()}");
+				foreach (var key in _currentShoppingList.Keys)
 				{
-					CheckItem(new StringBuilder(key), delayAtCheckItem);
+					CheckItem(new StringBuilder(key), _delayAtCheckItem);
 				}
+				SaveStateApp();
 			}
 		}
+
 
 		private static IEnumerable<StringBuilder> GetAllLinksByItem()
 		{
@@ -103,11 +105,11 @@ namespace MonitoringCsGoMarket
 				AutoDetectEncoding = false,
 				OverrideEncoding = Encoding.UTF8,
 			};
-			HD = web.Load(new StringBuilder().Append(mainUrlPage).Append(subUrlPages).Replace("#pagenumber#", "1").ToString());
+			HD = web.Load(new StringBuilder().Append(_mainUrlPage).Append(_subUrlPages).Replace("#pagenumber#", "1").ToString());
 			int.TryParse(HD.DocumentNode.SelectSingleNode("//span[@id='total_pages']").InnerText, out countPages);
 			for (int i = 1; i <= countPages; i++)
 			{
-				HD = web.Load(new StringBuilder().Append(mainUrlPage).Append(subUrlPages).Replace("#pagenumber#", i.ToString()).ToString());
+				HD = web.Load(new StringBuilder().Append(_mainUrlPage).Append(_subUrlPages).Replace("#pagenumber#", i.ToString()).ToString());
 				var applications = HD.GetElementbyId("applications");
 				var childNodes = applications.ChildNodes;
 				foreach (var childNode in childNodes)
@@ -115,15 +117,15 @@ namespace MonitoringCsGoMarket
 					var href = childNode.GetAttributeValue("href", string.Empty);
 					if (href != string.Empty)
 					{
-						yield return new StringBuilder().Append(mainUrlPage).Append(href);
+						yield return new StringBuilder().Append(_mainUrlPage).Append(href);
 					}
 				}
 			}
 		}
 
-		private static void CheckItem(StringBuilder linkItem, int delayAtCheckItem = 0)
+		private static void CheckItem(StringBuilder linkItem, int _delayAtCheckItem = 0)
 		{
-			Thread.Sleep(delayAtCheckItem);
+			Thread.Sleep(_delayAtCheckItem);
 			HtmlDocument HD = new HtmlDocument();
 			var web = new HtmlWeb
 			{
@@ -135,51 +137,51 @@ namespace MonitoringCsGoMarket
 			string curentType = GetCurentType(HD);
 			decimal curMinCost = GetCurMinCost(HD, curentType);
 			if (!NeedAddItemToCurrentShoppingList(linkItem, maxCostAutoBuy, curentType, curMinCost)) return;
-			if (currentShoppingBlockList.ContainsKey(linkItem.ToString().ToLower())) return;
-			if (!currentShoppingList.ContainsKey(linkItem.ToString().ToLower()))
+			if (_currentShoppingBlockList.ContainsKey(linkItem.ToString().ToLower())) return;
+			if (!_currentShoppingList.ContainsKey(linkItem.ToString().ToLower()))
 			{
-				UserInteractionManager.SendMessage("");
-				UserInteractionManager.SendMessage(linkItem.ToString());
-				UserInteractionManager.SendMessage($"maxCost = {maxCostAutoBuy}");
-				UserInteractionManager.SendMessage($"CurMinCost = {curMinCost}");
+				_userManager.SendUserMessage("");
+				_userManager.SendUserMessage(linkItem.ToString());
+				_userManager.SendUserMessage($"maxCost = {maxCostAutoBuy}");
+				_userManager.SendUserMessage($"CurMinCost = {curMinCost}");
 
-				if(testMode == false)
+				if(_testMode == false)
 				{
 					if (!GetPermissionFromAdmin()) 
 					{
 						bool ItemAddedBlock = false;
 						while (!ItemAddedBlock)
 						{
-							ItemAddedBlock = currentShoppingBlockList.TryAdd(linkItem.ToString().ToLower(), maxCostAutoBuy + 0.01m);
+							ItemAddedBlock = _currentShoppingBlockList.TryAdd(linkItem.ToString().ToLower(), maxCostAutoBuy + 0.01m);
 						}
-						UserInteractionManager.SendMessage("Предмет добавлен в блок");
+						_userManager.SendUserMessage("Предмет добавлен в блок");
 						return;
 					}
 				}
 
 				CreateBuyItem(linkItem, maxCostAutoBuy + 0.01m);
-				UserInteractionManager.SendMessage("Предмет добавлен в список покупок");
+				_userManager.SendUserMessage("Предмет добавлен в список покупок");
 				bool ItemAdded = false;
 				while (!ItemAdded)
 				{
-					ItemAdded = currentShoppingList.TryAdd(linkItem.ToString().ToLower(), maxCostAutoBuy + 0.01m);
+					ItemAdded = _currentShoppingList.TryAdd(linkItem.ToString().ToLower(), maxCostAutoBuy + 0.01m);
 				}
 			}
 			else
 			{
-				if (currentShoppingList[linkItem.ToString().ToLower()] < maxCostAutoBuy)
+				if (_currentShoppingList[linkItem.ToString().ToLower()] < maxCostAutoBuy)
 				{
 					CreateBuyItem(linkItem, maxCostAutoBuy + 0.01m);
-					currentShoppingList[linkItem.ToString().ToLower()] = maxCostAutoBuy + 0.01m;
+					_currentShoppingList[linkItem.ToString().ToLower()] = maxCostAutoBuy + 0.01m;
 				}
 			}
 		}
 
 		private static bool GetPermissionFromAdmin()
 		{
-			UserInteractionManager.SendMessage("Разрешить ли покупку данного предмета? yes - да, else - нет");
-			FlashWindowManager.Flash();
-			var userMessage = UserInteractionManager.GetUserMessage();
+			_userManager.SendUserMessage("Разрешить ли покупку данного предмета? yes - да, else - нет");
+			_userManager.Flash();
+			var userMessage = _userManager.GetUserMessage();
 			if (userMessage ==  "yes")
 			{
 				return true;
@@ -202,10 +204,10 @@ namespace MonitoringCsGoMarket
 			#region Бизнесово отказывемся
 				curentType == "Граффити" ||
 				linkItem.ToString().ToLower().Contains("stattrak") ||
-				minMoney > curMinCost
+				_minMoney > curMinCost
 				) return false;
-			decimal purchaseProfit = (curMinCost - (curMinCost / 100 * commissionPercentage) - maxCostAutoBuy);
-			if (purchaseProfit < acceptableProfit || currentMoney < maxCostAutoBuy) return false;
+			decimal purchaseProfit = (curMinCost - (curMinCost / 100 * _commissionPercentage) - maxCostAutoBuy);
+			if (purchaseProfit < _acceptableProfit || _currentMoney < maxCostAutoBuy) return false;
 			#endregion
 
 			return true;
@@ -213,10 +215,10 @@ namespace MonitoringCsGoMarket
 
 		private static void CreateBuyItem(StringBuilder linkItem, decimal sum)
 		{
-			if (testMode) sum = 0.1m;
+			if (_testMode) sum = 0.1m;
 			var splitUrl = linkItem.ToString().Substring(linkItem.ToString().IndexOf("item/") + 5).Split('-');
 			var buyUrl = new StringBuilder()
-				.Append(mainUrlBuy)
+				.Append(_mainUrlBuy)
 				.Append(splitUrl[0])
 				.Append("/")
 				.Append(splitUrl[1])
@@ -233,7 +235,7 @@ namespace MonitoringCsGoMarket
 			{
 				StreamReader reader = new StreamReader(dataStream);
 				string responseFromServer = reader.ReadToEnd();
-				if (testMode) UserInteractionManager.SendMessage(responseFromServer);
+				if (_testMode) _userManager.SendUserMessage(responseFromServer);
 			}
 		}
 
@@ -254,7 +256,7 @@ namespace MonitoringCsGoMarket
 			foreach (var sameItem in sameitemsList.ChildNodes)
 			{
 				var dataWear = sameItem.GetAttributeValue("data-wear", string.Empty);
-				foreach (var item in replacСharsInType)
+				foreach (var item in _replacСharsInType)
 				{
 					dataWear = dataWear.Replace(item.Key, item.Value);
 				}
@@ -264,13 +266,13 @@ namespace MonitoringCsGoMarket
 					if (button != null)
 					{
 						countItems++;
-						var cost = decimal.Parse(button.ChildNodes.Where(i => i.Name == "button").FirstOrDefault().InnerText.Replace("\n", "").Replace(" ", "").Trim(), priceSplitSeparator);
+						var cost = decimal.Parse(button.ChildNodes.Where(i => i.Name == "button").FirstOrDefault().InnerText.Replace("\n", "").Replace(" ", "").Trim(), _priceSplitSeparator);
 						if (minCost == null) minCost = cost;
 						if (minCost > cost) minCost = cost;
 					}
 				}
 			}
-			if (minCost != null && minCost > 0 && countItems >= minCountItem) return (decimal)minCost;
+			if (minCost != null && minCost > 0 && countItems >= _minCountItem) return (decimal)minCost;
 			return 0;
 		}
 
@@ -282,7 +284,7 @@ namespace MonitoringCsGoMarket
 			foreach (var appearanceItem in appearanceItems)
 			{
 				var targetType = appearanceItem.InnerText.Replace("\n", "").Trim();
-				foreach (var item in replacСharsInType)
+				foreach (var item in _replacСharsInType)
 				{
 					targetType = targetType.Replace(item.Key, item.Value);
 				}
@@ -298,7 +300,7 @@ namespace MonitoringCsGoMarket
 					CurentType = appearanceItem.InnerText.Replace("\n", "").Trim();
 				}
 			}
-			foreach (var item in replacСharsInType)
+			foreach (var item in _replacСharsInType)
 			{
 				CurentType = CurentType.Replace(item.Key, item.Value);
 			}
@@ -316,12 +318,24 @@ namespace MonitoringCsGoMarket
 				{
 					foreach (var bItem in rectanglestat.ChildNodes.Where(i => i.Name == "b"))
 					{
-						var cost = decimal.Parse(bItem.InnerText.Replace("и менее", "").Replace(" ", "").Trim(), priceSplitSeparator);
+						var cost = decimal.Parse(bItem.InnerText.Replace("и менее", "").Replace(" ", "").Trim(), _priceSplitSeparator);
 						if (maxCost < cost) maxCost = cost;
 					}
 				}
 			}
 			return maxCost;
+		}
+
+		private static void SaveStateApp()
+		{
+			_stateKeeperMonitoringApp.SetState(new MomentoMonitoringApp(_currentShoppingList, _currentShoppingBlockList));
+		}
+
+		private static void RestoreStateApp()
+		{
+			var state = _stateKeeperMonitoringApp.GetState();
+			_currentShoppingList = state.currentShoppingList;
+			_currentShoppingBlockList= state.currentShoppingBlockList;
 		}
 	}
 }
