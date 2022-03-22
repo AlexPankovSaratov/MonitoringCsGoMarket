@@ -1,5 +1,5 @@
 ﻿
-namespace MomentoManager
+namespace StateKeeperMonitoringApp
 {
 	public interface IStateKeeperMonitoringApp
 	{

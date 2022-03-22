@@ -1,6 +1,6 @@
 ﻿using System.Collections.Concurrent;
 
-namespace MomentoManager
+namespace StateKeeperMonitoringApp
 {
 	public class MomentoMonitoringApp
 	{

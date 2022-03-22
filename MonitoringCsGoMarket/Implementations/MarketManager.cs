@@ -1,6 +1,6 @@
 ﻿using HtmlAgilityPack;
 using Microsoft.Extensions.Configuration;
-using MomentoManager;
+using StateKeeperMonitoringApp;
 using MonitoringCsGoMarket.Abstractions;
 using System;
 using System.Collections.Concurrent;
