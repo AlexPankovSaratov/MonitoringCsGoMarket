@@ -180,7 +180,7 @@ namespace MonitoringCsGoMarket.Implementations
 		private static bool GetPermissionFromAdmin()
 		{
 			_userManager.SendUserMessage("Разрешить ли покупку данного предмета? yes - да, else - нет");
-			_userManager.Flash();
+			_userManager.NotifyUser();
 			var userMessage = _userManager.GetUserMessage();
 			if (userMessage ==  "yes")
 			{

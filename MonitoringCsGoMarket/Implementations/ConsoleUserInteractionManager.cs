@@ -16,7 +16,7 @@ namespace MonitoringCsGoMarket.Implementations
 			return Console.ReadLine().ToLower();
 		}
 
-		public void Flash()
+		public void NotifyUser()
 		{
 			FlashWindowManager.Flash();
 		}

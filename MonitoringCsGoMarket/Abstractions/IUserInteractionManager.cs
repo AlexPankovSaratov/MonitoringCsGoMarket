@@ -5,6 +5,6 @@ namespace MonitoringCsGoMarket.Abstractions
 	{
 		void SendUserMessage(string message);
 		string GetUserMessage();
-		void Flash();
+		void NotifyUser();
 	}
 }
