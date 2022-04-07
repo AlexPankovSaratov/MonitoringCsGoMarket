@@ -1,8 +1,8 @@
-﻿using MonitoringCsGoMarket.Abstractions;
-using MonitoringCsGoMarket.HelperClasses;
+﻿using MonitoringMarket.Abstractions;
+using MonitoringMarket.HelperClasses;
 using System;
 
-namespace MonitoringCsGoMarket.Implementations
+namespace MonitoringMarket.Implementations
 {
 	public class ConsoleUserInteractionManager : IUserInteractionManager
 	{

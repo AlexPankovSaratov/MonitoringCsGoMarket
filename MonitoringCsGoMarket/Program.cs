@@ -1,8 +1,8 @@
-﻿using MonitoringCsGoMarket.Implementations;
+﻿using MonitoringMarket.Implementations;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace MonitoringCsGoMarket
+namespace MonitoringMarket
 {
 	class Program
 	{

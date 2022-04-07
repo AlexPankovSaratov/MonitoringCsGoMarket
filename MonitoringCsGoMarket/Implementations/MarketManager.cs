@@ -1,7 +1,7 @@
 ﻿using HtmlAgilityPack;
 using Microsoft.Extensions.Configuration;
 using StateKeeperMonitoringApp;
-using MonitoringCsGoMarket.Abstractions;
+using MonitoringMarket.Abstractions;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -12,7 +12,7 @@ using System.Net;
 using System.Text;
 using System.Threading;
 
-namespace MonitoringCsGoMarket.Implementations
+namespace MonitoringMarket.Implementations
 {
 	internal static class MarketManager
 	{

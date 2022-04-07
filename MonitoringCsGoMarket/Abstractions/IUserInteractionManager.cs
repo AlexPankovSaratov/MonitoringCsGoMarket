@@ -1,5 +1,5 @@
 ﻿
-namespace MonitoringCsGoMarket.Abstractions
+namespace MonitoringMarket.Abstractions
 {
 	public interface IUserInteractionManager
 	{
