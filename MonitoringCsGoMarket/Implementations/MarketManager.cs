@@ -204,7 +204,8 @@ namespace MonitoringCsGoMarket.Implementations
 			#region Бизнесово отказывемся
 				curentType == "Граффити" ||
 				linkItem.ToString().ToLower().Contains("stattrak") ||
-				_minMoney > curMinCost
+				_minMoney > curMinCost  ||
+				linkItem.ToString().Contains("Souvenir")
 				) return false;
 			decimal purchaseProfit = (curMinCost - (curMinCost / 100 * _commissionPercentage) - maxCostAutoBuy);
 			if (purchaseProfit < _acceptableProfit || _currentMoney < maxCostAutoBuy) return false;
