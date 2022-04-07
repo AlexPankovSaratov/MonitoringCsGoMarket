@@ -59,9 +59,9 @@ namespace MonitoringCsGoMarket.Implementations
 		private static int _minCountItem = int.Parse(_appSettings["minCountItem"]);
 		#endregion
 		#region Конфигурация маркета
-		private static StringBuilder _mainUrlPage = new StringBuilder("https://market.csgo.com");
+		private static StringBuilder _mainUrlPage = new StringBuilder("");
 		private static StringBuilder _subUrlPages = new StringBuilder($"?t=all&p=#pagenumber#&rs={_minMoney};{_currentMoney*2}&sd=desc");
-		private static StringBuilder _mainUrlBuy = new StringBuilder("https://market.csgo.com/orders/insert/");
+		private static StringBuilder _mainUrlBuy = new StringBuilder("");
 		private static NumberFormatInfo _priceSplitSeparator = new NumberFormatInfo { NumberDecimalSeparator = "." };
 		private static Dictionary<string, string> _replacСharsInType = new Dictionary<string, string> { 
 			{ "ё", "е" } 
@@ -202,10 +202,10 @@ namespace MonitoringCsGoMarket.Implementations
 			#endregion
 
 			#region Бизнесово отказывемся
-				curentType == "Граффити" ||
-				linkItem.ToString().ToLower().Contains("stattrak") ||
+				curentType == "" ||
+				linkItem.ToString().ToLower().Contains("") ||
 				_minMoney > curMinCost  ||
-				linkItem.ToString().Contains("Souvenir")
+				linkItem.ToString().Contains("")
 				) return false;
 			decimal purchaseProfit = (curMinCost - (curMinCost / 100 * _commissionPercentage) - maxCostAutoBuy);
 			if (purchaseProfit < _acceptableProfit || _currentMoney < maxCostAutoBuy) return false;
@@ -227,8 +227,8 @@ namespace MonitoringCsGoMarket.Implementations
 			HttpWebRequest request = (HttpWebRequest)WebRequest.Create(buyUrl);
 			request.Accept = "application/json";
 			request.ContentType = "application/json; charset=UTF-8";
-			request.Headers.Add("Cookie", "PHPSESSID=117336686%3Ali6ru5ldev7eaarej5ntcbfjqk; _csrf=926LXy15cNvN1sWv9QqZ9Mmnl_Tl5MDS; goon=0; d2mid=p0Why2Z1jHHlfUKQdxFG4gar757Gky; chr1=y; _ym_isad=2; _ym_d=1647607115; _gid=GA1.2.859436637.1647607116; _ym_visorc=w; _ga=GA1.2.1748404017.1647607116; _fbp=fb.1.1647607117182.1463398233; _ym_uid=1647607115548231279");
-			request.Headers.Add("X-CSRF-TOKEN", "OLxroo7KTmdgH7XLsARar-afYyMA2WDtf4nfTqKRzKgBjl3u1rN_UgNRw4WBdw3Z384SeTmUDYMT1osil9yI-w==");
+			request.Headers.Add("", "");
+			request.Headers.Add("", "");
 			request.Method = "POST";
 
 			WebResponse response = request.GetResponse();
@@ -290,11 +290,7 @@ namespace MonitoringCsGoMarket.Implementations
 					targetType = targetType.Replace(item.Key, item.Value);
 				}
 				if (new string[] {
-					"Закаленное в боях",
-					"Поношенное",
-					"После полевых испытаний",
-					"Немного поношенное",
-					"Прямо с завода",
+					"",
 				}.Contains(
 				targetType))
 				{
