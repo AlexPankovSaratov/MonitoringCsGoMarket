@@ -273,7 +273,7 @@ namespace MonitoringCsGoMarket.Implementations
 			request.Accept = "application/json";
 			request.ContentType = "application/json; charset=UTF-8";
 			request.Headers.Add("Cookie", "_csrf=yWx02fKjyW7bkob8eAdltk5JJJ2ZNT59; _ga=GA1.2.1882011047.1645372705; _fbp=fb.1.1645372705745.481133016; _ym_d=1645372706; _ym_uid=1645372706426026580; hide-warn=1; chr1=y; chat-hiderules=1; _gid=GA1.2.1549598663.1647023047; chat-opened=0; chat-position-top=886px; chat-position-left=1px; chat-detached=0; hide-warn-client=1; cf_clearance=oBgfogY7kbSnxBliaJYhNLGJEw.3FG2hHa96TF42MUk-1649771259-0-250; d2mid=4YC1zS3rrcojcThckqgX6ZxNZjgJs9; PHPSESSID=117336686%3Ard0iu9o6auvnu16kqerhg9fcul; _ym_visorc=b; _ym_isad=2; goon=0; _gat=1");
-			request.Headers.Add("X-CSRF-TOKEN", "Jy966bCDkFUVSZwtA_DOcugAs_8mI4U74pH8eDl7-2heeALZguXbP2weq09on6xKjUHXk1JIsHGo284idy_OUQ==");
+			request.Headers.Add("X-CSRF-TOKEN", _appSettings["TOKEN"]);
 			request.Method = "POST";
 
 			WebResponse response = request.GetResponse();
