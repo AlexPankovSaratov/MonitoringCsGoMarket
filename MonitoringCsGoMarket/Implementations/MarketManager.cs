@@ -11,6 +11,7 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading;
+using Newtonsoft.Json;
 
 namespace MonitoringCsGoMarket.Implementations
 {
@@ -138,12 +139,18 @@ namespace MonitoringCsGoMarket.Implementations
 			decimal curMinCost = GetCurMinCost(HD, curentType);
 			if (!NeedAddItemToCurrentShoppingList(linkItem, maxCostAutoBuy, curentType, curMinCost)) return;
 			if (_currentShoppingBlockList.ContainsKey(linkItem.ToString().ToLower())) return;
+			//var CheckSteamPriceResult = CheckSteamPrice(linkItem, maxCostAutoBuy, curentType, curMinCost);
 			if (!_currentShoppingList.ContainsKey(linkItem.ToString().ToLower()))
 			{
+				//if (CheckSteamPriceResult == StatusCheckSteamPrice.DoNotBuy) return;
 				_userManager.SendUserMessage("");
 				_userManager.SendUserMessage(linkItem.ToString());
 				_userManager.SendUserMessage($"maxCost = {maxCostAutoBuy}");
 				_userManager.SendUserMessage($"CurMinCost = {curMinCost}");
+				//if (CheckSteamPriceResult == StatusCheckSteamPrice.NeedVerification)
+				//{
+				//	_userManager.SendUserMessage($"Требуется проверка цены в steam!!!");
+				//}
 
 				if(_testMode == false)
 				{
@@ -174,6 +181,44 @@ namespace MonitoringCsGoMarket.Implementations
 					CreateBuyItem(linkItem, maxCostAutoBuy + 0.01m);
 					_currentShoppingList[linkItem.ToString().ToLower()] = maxCostAutoBuy + 0.01m;
 				}
+			}
+		}
+
+		enum StatusCheckSteamPrice
+		{
+			DoNotBuy = 0,
+			Buy = 01,
+			NeedVerification
+		}
+
+		private static StatusCheckSteamPrice CheckSteamPrice(StringBuilder linkItem, decimal maxCostAutoBuy, string curentType, decimal curMinCost)
+		{
+			var splitUrl = linkItem.ToString().Substring(linkItem.ToString().IndexOf("item/") + 5);
+			splitUrl = splitUrl.Substring(splitUrl.IndexOf("-") + 1);
+			splitUrl = splitUrl.Substring(splitUrl.IndexOf("-") + 1);
+			splitUrl = splitUrl.Substring(0, splitUrl.Length - 1);
+			var SteamUrl = "https://steamcommunity.com/market/priceoverview/?appid=730&currency=5&market_hash_name=" + splitUrl;
+			HttpWebRequest request = (HttpWebRequest)WebRequest.Create(SteamUrl);
+			request.Accept = "application/json";
+			request.ContentType = "application/json; charset=UTF-8";
+			request.Method = "GET";
+			try
+			{
+				WebResponse response = request.GetResponse();
+				using (Stream dataStream = response.GetResponseStream())
+				{
+					StreamReader reader = new StreamReader(dataStream);
+					var values = JsonConvert.DeserializeObject<Dictionary<string, string>>(reader.ReadToEnd());
+					var lowest_price = decimal.Parse(values["lowest_price"].Replace(" pуб.", ""));
+					var median_price = decimal.Parse(values["median_price"].Replace(" pуб.", ""));
+					if (curMinCost < lowest_price && curMinCost < median_price) return StatusCheckSteamPrice.Buy;
+				}
+				return StatusCheckSteamPrice.DoNotBuy;
+			}
+			catch (Exception)
+			{
+				//return StatusCheckSteamPrice.DoNotBuy;
+				return StatusCheckSteamPrice.NeedVerification;
 			}
 		}
 
@@ -227,8 +272,8 @@ namespace MonitoringCsGoMarket.Implementations
 			HttpWebRequest request = (HttpWebRequest)WebRequest.Create(buyUrl);
 			request.Accept = "application/json";
 			request.ContentType = "application/json; charset=UTF-8";
-			request.Headers.Add("Cookie", "PHPSESSID=117336686%3Ali6ru5ldev7eaarej5ntcbfjqk; _csrf=926LXy15cNvN1sWv9QqZ9Mmnl_Tl5MDS; goon=0; d2mid=p0Why2Z1jHHlfUKQdxFG4gar757Gky; chr1=y; _ym_isad=2; _ym_d=1647607115; _gid=GA1.2.859436637.1647607116; _ym_visorc=w; _ga=GA1.2.1748404017.1647607116; _fbp=fb.1.1647607117182.1463398233; _ym_uid=1647607115548231279");
-			request.Headers.Add("X-CSRF-TOKEN", "OLxroo7KTmdgH7XLsARar-afYyMA2WDtf4nfTqKRzKgBjl3u1rN_UgNRw4WBdw3Z384SeTmUDYMT1osil9yI-w==");
+			request.Headers.Add("Cookie", "_csrf=yWx02fKjyW7bkob8eAdltk5JJJ2ZNT59; _ga=GA1.2.1882011047.1645372705; _fbp=fb.1.1645372705745.481133016; _ym_d=1645372706; _ym_uid=1645372706426026580; hide-warn=1; chr1=y; chat-hiderules=1; _gid=GA1.2.1549598663.1647023047; chat-opened=0; chat-position-top=886px; chat-position-left=1px; chat-detached=0; hide-warn-client=1; cf_clearance=oBgfogY7kbSnxBliaJYhNLGJEw.3FG2hHa96TF42MUk-1649771259-0-250; d2mid=4YC1zS3rrcojcThckqgX6ZxNZjgJs9; PHPSESSID=117336686%3Ard0iu9o6auvnu16kqerhg9fcul; _ym_visorc=b; _ym_isad=2; goon=0; _gat=1");
+			request.Headers.Add("X-CSRF-TOKEN", "Jy966bCDkFUVSZwtA_DOcugAs_8mI4U74pH8eDl7-2heeALZguXbP2weq09on6xKjUHXk1JIsHGo284idy_OUQ==");
 			request.Method = "POST";
 
 			WebResponse response = request.GetResponse();
