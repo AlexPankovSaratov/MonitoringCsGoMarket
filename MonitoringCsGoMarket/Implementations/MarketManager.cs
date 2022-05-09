@@ -12,6 +12,9 @@ using System.Net;
 using System.Text;
 using System.Threading;
 using Newtonsoft.Json;
+using System.Net.Http;
+using System.Threading.Tasks;
+using MonitoringCsGoMarket.HelperClasses;
 
 namespace MonitoringCsGoMarket.Implementations
 {
@@ -61,7 +64,7 @@ namespace MonitoringCsGoMarket.Implementations
 		#endregion
 		#region Конфигурация маркета
 		private static StringBuilder _mainUrlPage = new StringBuilder("https://market.csgo.com");
-		private static StringBuilder _subUrlPages = new StringBuilder($"?t=all&p=#pagenumber#&rs={_minMoney};{_currentMoney*2}&sd=desc");
+		private static StringBuilder _subUrlPages = new StringBuilder($"?t=all&p=#pagenumber#&rs={_minMoney};{_currentMoney*2.5}&sd=desc");
 		private static StringBuilder _mainUrlBuy = new StringBuilder("https://market.csgo.com/orders/insert/");
 		private static NumberFormatInfo _priceSplitSeparator = new NumberFormatInfo { NumberDecimalSeparator = "." };
 		private static Dictionary<string, string> _replacСharsInType = new Dictionary<string, string> { 
@@ -89,6 +92,7 @@ namespace MonitoringCsGoMarket.Implementations
 			{
 				Thread.Sleep(_delayAtMonitoringMarket);
 				if (_testMode) _userManager.SendUserMessage($"Run MonitoringСurrentShoppingList. Count items in list = {_currentShoppingList.Count()}");
+				//MonitoringСurrentShoppingListByApiAsync();
 				foreach (var key in _currentShoppingList.Keys)
 				{
 					CheckItem(new StringBuilder(key), _delayAtCheckItem);
@@ -97,6 +101,33 @@ namespace MonitoringCsGoMarket.Implementations
 			}
 		}
 
+		private static async Task MonitoringСurrentShoppingListByApiAsync()
+		{
+			string apiKey = _appSettings["apiKey"];
+			int page = 0;
+			var orders = new List<Order>();
+			var currentOrders = new CurrentOrders();
+			HttpClient client = new HttpClient();
+			HttpResponseMessage response = await client.GetAsync("https://market.csgo.com/api/v2/get-orders?key="+ apiKey + "&page=" + page);
+			response.EnsureSuccessStatusCode();
+			var jsonString = await response.Content.ReadAsStringAsync();
+			currentOrders = JsonConvert.DeserializeObject<CurrentOrders>(jsonString);
+			orders.AddRange(currentOrders.orders);
+			while (currentOrders.orders.Count > 0)
+			{
+				page++;
+				response = await client.GetAsync("https://market.csgo.com/api/v2/get-orders?key=" + apiKey + "&page=" + page);
+				response.EnsureSuccessStatusCode();
+				jsonString = await response.Content.ReadAsStringAsync();
+				currentOrders = JsonConvert.DeserializeObject<CurrentOrders>(jsonString);
+				orders.AddRange(currentOrders.orders);
+			}
+			var q = orders.FirstOrDefault().hash_name;
+			response = await client.GetAsync("https://market.csgo.com/api/v2/search-item-by-hash-name-specific?key=" + apiKey + "&hash_name=" + q);
+			response.EnsureSuccessStatusCode();
+			jsonString = await response.Content.ReadAsStringAsync();
+			var items = JsonConvert.DeserializeObject<Item>(jsonString).data.GroupBy(i => i.price);
+		}
 
 		private static IEnumerable<StringBuilder> GetAllLinksByItem()
 		{
