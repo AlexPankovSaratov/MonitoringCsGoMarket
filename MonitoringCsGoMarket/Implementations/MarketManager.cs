@@ -64,7 +64,7 @@ namespace MonitoringCsGoMarket.Implementations
 		#endregion
 		#region Конфигурация маркета
 		private static StringBuilder _mainUrlPage = new StringBuilder("https://market.csgo.com");
-		private static StringBuilder _subUrlPages = new StringBuilder($"?t=all&p=#pagenumber#&rs={_minMoney};{_currentMoney*2.5}&sd=desc");
+		private static StringBuilder _subUrlPages = new StringBuilder($"?t=all&p=#pagenumber#&rs={_minMoney};{_currentMoney*3}&sd=desc");
 		private static StringBuilder _mainUrlBuy = new StringBuilder("https://market.csgo.com/orders/insert/");
 		private static NumberFormatInfo _priceSplitSeparator = new NumberFormatInfo { NumberDecimalSeparator = "." };
 		private static Dictionary<string, string> _replacСharsInType = new Dictionary<string, string> { 
