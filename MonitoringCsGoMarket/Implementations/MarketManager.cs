@@ -164,6 +164,11 @@ namespace MonitoringCsGoMarket.Implementations
 				AutoDetectEncoding = false,
 				OverrideEncoding = Encoding.UTF8,
 			};
+			web.PreRequest += (request) =>
+			{
+				request.Headers.Add("Referer", linkItem.ToString());
+				return true;
+			};
 			HD = web.Load(linkItem.ToString());
 			decimal maxCostAutoBuy = GetMaxCostAutoBuy(HD);
 			string curentType = GetCurentType(HD);
@@ -213,6 +218,23 @@ namespace MonitoringCsGoMarket.Implementations
 					_currentShoppingList[linkItem.ToString().ToLower()] = maxCostAutoBuy + 0.01m;
 				}
 			}
+		}
+
+		public static String code(string Url)
+		{
+			HttpWebRequest myRequest = (HttpWebRequest)WebRequest.Create(Url);
+			myRequest.Accept = "application/json";
+			myRequest.ContentType = "text/html; charset=UTF-8";
+			myRequest.Headers.Add("Referer", Url);
+			myRequest.Method = "GET";
+			WebResponse myResponse = myRequest.GetResponse();
+			StreamReader sr = new StreamReader(myResponse.GetResponseStream(),
+				System.Text.Encoding.UTF8);
+			string result = sr.ReadToEnd();
+			sr.Close();
+			myResponse.Close();
+
+			return result;
 		}
 
 		enum StatusCheckSteamPrice
