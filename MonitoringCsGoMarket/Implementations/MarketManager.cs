@@ -75,7 +75,6 @@ namespace MonitoringCsGoMarket.Implementations
 
 		internal static void SearchingItemsMarket()
 		{
-			RestoreStateApp();
 			_userManager.SendUserMessage("Start searching items market");
 			while (true)
 			{
@@ -88,11 +87,11 @@ namespace MonitoringCsGoMarket.Implementations
 
 		internal static void MonitoringСurrentShoppingList()
 		{
+			RestoreStateApp();
 			while (true)
 			{
 				Thread.Sleep(_delayAtMonitoringMarket);
 				if (_testMode) _userManager.SendUserMessage($"Run MonitoringСurrentShoppingList. Count items in list = {_currentShoppingList.Count()}");
-				//MonitoringСurrentShoppingListByApiAsync();
 				foreach (var key in _currentShoppingList.Keys)
 				{
 					CheckItem(new StringBuilder(key), _delayAtCheckItem);
@@ -101,32 +100,109 @@ namespace MonitoringCsGoMarket.Implementations
 			}
 		}
 
-		private static async Task MonitoringСurrentShoppingListByApiAsync()
+		internal static void MonitoringСurrentShoppingList2()
 		{
-			string apiKey = _appSettings["apiKey"];
-			int page = 0;
-			var orders = new List<Order>();
-			var currentOrders = new CurrentOrders();
+			RestoreStateApp();
+			while (true)
+			{
+				//Thread.Sleep(_delayAtMonitoringMarket);
+				if (_testMode) _userManager.SendUserMessage($"Run MonitoringСurrentShoppingList. Count items in list = {_currentShoppingList.Count()}");
+				var allItemFromApi = GetAllItemFromApi().Result;
+				foreach (var link in _currentShoppingList.Keys)
+				{
+					var numberItemArr = link.Substring(link.IndexOf("item/") + 5).Split('-');
+					var numberItem = numberItemArr[0] + "_" + numberItemArr[1];
+					foreach (var item in allItemFromApi.Where(i => i.Key == numberItem))
+					{
+						var itemFromAPI = item;
+						if (itemFromAPI.Value == null) break;
+						var topBestBuyOffer = GetItemFromApi(numberItem);
+						if (topBestBuyOffer.Result > itemFromAPI.Value.buy_order) itemFromAPI.Value.buy_order = topBestBuyOffer.Result;
+						CheckItem(new StringBuilder(link), _delayAtCheckItem, itemFromAPI);
+					}
+					
+				}
+				SaveStateApp();
+			}
+		}
+
+		private static void CheckItem(StringBuilder linkItem, int delayAtCheckItem, KeyValuePair<string, Item> itemFromAPI)
+		{
+			Thread.Sleep(250);
+			decimal maxCostAutoBuy = itemFromAPI.Value.buy_order;
+			string curentType = itemFromAPI.Value.ru_quality;
+			decimal curMinCost = itemFromAPI.Value.price;
+			if (!NeedAddItemToCurrentShoppingList(linkItem, maxCostAutoBuy, curentType, curMinCost)) return;
+			if (_currentShoppingBlockList.ContainsKey(linkItem.ToString().ToLower())) return;
+			//var CheckSteamPriceResult = CheckSteamPrice(linkItem, maxCostAutoBuy, curentType, curMinCost);
+			if (!_currentShoppingList.ContainsKey(linkItem.ToString().ToLower()))
+			{
+				//if (CheckSteamPriceResult == StatusCheckSteamPrice.DoNotBuy) return;
+				_userManager.SendUserMessage("");
+				_userManager.SendUserMessage(linkItem.ToString());
+				_userManager.SendUserMessage($"maxCost = {maxCostAutoBuy}");
+				_userManager.SendUserMessage($"CurMinCost = {curMinCost}");
+				//if (CheckSteamPriceResult == StatusCheckSteamPrice.NeedVerification)
+				//{
+				//	_userManager.SendUserMessage($"Требуется проверка цены в steam!!!");
+				//}
+
+				if (_testMode == false)
+				{
+					if (!GetPermissionFromAdmin())
+					{
+						bool ItemAddedBlock = false;
+						while (!ItemAddedBlock)
+						{
+							ItemAddedBlock = _currentShoppingBlockList.TryAdd(linkItem.ToString().ToLower(), maxCostAutoBuy + 0.05m);
+						}
+						_userManager.SendUserMessage("Предмет добавлен в блок");
+						return;
+					}
+				}
+
+				CreateBuyItem(linkItem, maxCostAutoBuy + 0.01m);
+				_userManager.SendUserMessage("Предмет добавлен в список покупок");
+				bool ItemAdded = false;
+				while (!ItemAdded)
+				{
+					ItemAdded = _currentShoppingList.TryAdd(linkItem.ToString().ToLower(), maxCostAutoBuy + 0.01m);
+				}
+			}
+			else
+			{
+				if (_currentShoppingList[linkItem.ToString().ToLower()] < maxCostAutoBuy)
+				{
+					CreateBuyItem(linkItem, maxCostAutoBuy + 0.01m);
+					_currentShoppingList[linkItem.ToString().ToLower()] = maxCostAutoBuy + 0.01m;
+				}
+			}
+		}
+
+		public static async Task<Dictionary<string,Item>> GetAllItemFromApi()
+		{
+			var currentOrders = new Root();
 			HttpClient client = new HttpClient();
-			HttpResponseMessage response = await client.GetAsync("https://market.csgo.com/api/v2/get-orders?key="+ apiKey + "&page=" + page);
+			HttpResponseMessage response = await client.GetAsync("https://market.csgo.com/api/v2/prices/class_instance/RUB.json");
 			response.EnsureSuccessStatusCode();
 			var jsonString = await response.Content.ReadAsStringAsync();
-			currentOrders = JsonConvert.DeserializeObject<CurrentOrders>(jsonString);
-			orders.AddRange(currentOrders.orders);
-			while (currentOrders.orders.Count > 0)
-			{
-				page++;
-				response = await client.GetAsync("https://market.csgo.com/api/v2/get-orders?key=" + apiKey + "&page=" + page);
-				response.EnsureSuccessStatusCode();
-				jsonString = await response.Content.ReadAsStringAsync();
-				currentOrders = JsonConvert.DeserializeObject<CurrentOrders>(jsonString);
-				orders.AddRange(currentOrders.orders);
-			}
-			var q = orders.FirstOrDefault().hash_name;
-			response = await client.GetAsync("https://market.csgo.com/api/v2/search-item-by-hash-name-specific?key=" + apiKey + "&hash_name=" + q);
+			currentOrders = JsonConvert.DeserializeObject<Root>(jsonString);
+			return currentOrders.items;
+		}
+
+		public static async Task<decimal> GetItemFromApi(string itemNumber)
+		{
+			var soloItemPrice = new SoloItemPrice();
+			HttpClient client = new HttpClient();
+			var z = $"https://market.csgo.com/api/BestBuyOffer/{itemNumber}?key={_appSettings["apiKey"]}";
+			HttpResponseMessage response = await client.GetAsync($"https://market.csgo.com/api/BestBuyOffer/{itemNumber}?key={_appSettings["apiKey"]}");
 			response.EnsureSuccessStatusCode();
-			jsonString = await response.Content.ReadAsStringAsync();
-			var items = JsonConvert.DeserializeObject<Item>(jsonString).data.GroupBy(i => i.price);
+			var jsonString = await response.Content.ReadAsStringAsync();
+			soloItemPrice = JsonConvert.DeserializeObject<SoloItemPrice>(jsonString);
+			var dec1 = soloItemPrice.best_offer.ToString().Substring(0,soloItemPrice.best_offer.ToString().Length - 2);
+			var dec2 = soloItemPrice.best_offer.ToString().Substring(soloItemPrice.best_offer.ToString().Length - 2);
+			var res = decimal.Parse(dec1 + "," + dec2);
+			return res;
 		}
 
 		private static IEnumerable<StringBuilder> GetAllLinksByItem()

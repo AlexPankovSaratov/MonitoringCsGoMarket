@@ -6,43 +6,30 @@ using System.Threading.Tasks;
 
 namespace MonitoringCsGoMarket.HelperClasses
 {
-    public class Order
-    {
-        public string hash_name { get; set; }
-        public int count { get; set; }
-        public string date { get; set; }
-        public int price { get; set; }
-        public string currency { get; set; }
-        public object partner { get; set; }
-        public object token { get; set; }
-    }
-
-    public class CurrentOrders
+    public class Root
     {
         public bool success { get; set; }
-        public List<Order> orders { get; set; }
+        public int time { get; set; }
+        public string currency { get; set; }
+        public Dictionary<string, Item> items { get; set; } = new();
     }
-
-    public class Datum
-    {
-        public object id { get; set; }
-        public string market_hash_name { get; set; }
-        public int price { get; set; }
-        public long @class { get; set; }
-        public int instance { get; set; }
-        public Extra extra { get; set; }
-    }
-
-    public class Extra
-    {
-        public string @float { get; set; }
-        public string phase { get; set; }
-    }
-
     public class Item
     {
+        public decimal price { get; set; }
+        public decimal buy_order { get; set; }
+        public decimal? avg_price { get; set; }
+        public string popularity_7d { get; set; }
+        public string market_hash_name { get; set; }
+        public string ru_name { get; set; }
+        public string ru_rarity { get; set; }
+        public string ru_quality { get; set; }
+        public string text_color { get; set; }
+        public string bg_color { get; set; }
+    }
+
+    public class SoloItemPrice
+    {
         public bool success { get; set; }
-        public string currency { get; set; }
-        public List<Datum> data { get; set; }
+        public string best_offer { get; set; }
     }
 }
