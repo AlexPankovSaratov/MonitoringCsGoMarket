@@ -10,8 +10,7 @@ namespace MonitoringCsGoMarket
 		{
 			List<Task> tasks = new List<Task>();
 			tasks.Add(Task.Run(MarketManager.SearchingItemsMarket));
-			tasks.Add(Task.Run(MarketManager.MonitoringСurrentShoppingList2));
-			//tasks.Add(Task.Run(MarketManager.MonitoringСurrentShoppingList));
+			tasks.Add(Task.Run(MarketManager.MonitoringСurrentShoppingList3));
 			Task.WaitAll(tasks.ToArray());
 		}
 	}

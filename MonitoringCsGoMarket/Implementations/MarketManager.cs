@@ -108,6 +108,7 @@ namespace MonitoringCsGoMarket.Implementations
 				//Thread.Sleep(_delayAtMonitoringMarket);
 				if (_testMode) _userManager.SendUserMessage($"Run MonitoringСurrentShoppingList. Count items in list = {_currentShoppingList.Count()}");
 				var allItemFromApi = GetAllItemFromApi().Result;
+				//GetAllItemFromApi2(_currentShoppingList.Keys);
 				foreach (var link in _currentShoppingList.Keys)
 				{
 					var numberItemArr = link.Substring(link.IndexOf("item/") + 5).Split('-');
@@ -125,10 +126,6 @@ namespace MonitoringCsGoMarket.Implementations
 								if (topBestBuyOffer.Result > itemFromAPI.Value.buy_order) itemFromAPI.Value.buy_order = topBestBuyOffer.Result;
 								CheckItem(new StringBuilder(link), _delayAtCheckItem, itemFromAPI);
 							}
-							else
-							{
-								var q = 1;
-							}
 						}
 						catch (Exception)
 						{
@@ -137,6 +134,57 @@ namespace MonitoringCsGoMarket.Implementations
 				}
 				SaveStateApp();
 			}
+		}
+
+		internal static void MonitoringСurrentShoppingList3()
+		{
+			RestoreStateApp();
+			while (true)
+			{
+				//Thread.Sleep(_delayAtMonitoringMarket);
+				if (_testMode) _userManager.SendUserMessage($"Run MonitoringСurrentShoppingList. Count items in list = {_currentShoppingList.Count()}");
+				var allItemFromApi = GetAllItemFromApi2(_currentShoppingList.Keys).Result;
+				foreach (var item in allItemFromApi)
+				{
+					CheckItem(
+						new StringBuilder(_currentShoppingList.Keys.Where(k => k.Contains(item.classid)).First())
+						, item);
+				}
+
+				SaveStateApp();
+			}
+		}
+
+		public static async Task<List<Result>> GetAllItemFromApi2(ICollection<string> links)
+		{
+			var listItems = new StringBuilder();
+			foreach (var link in links)
+			{
+				var numberItemArr = link.Substring(link.IndexOf("item/") + 5).Split('-');
+				var numberItem = numberItemArr[0] + "_" + numberItemArr[1];
+				if (listItems.Length == 0)
+				{
+					listItems.Append(numberItem);
+				}
+				else
+				{
+					listItems.Append(',');
+					listItems.Append(numberItem);
+				}
+			}
+
+			var currentOrders = new Root2();
+			HttpClient client = new HttpClient();
+			var formContent = new FormUrlEncodedContent(new[]
+			{
+				new KeyValuePair<string, string>("list", listItems.ToString()),
+			});
+
+			HttpResponseMessage response = await client.PostAsync($"https://market.csgo.com/api/MassInfo/2/2/0/1?key={_appSettings["apiKey"]}", formContent);
+			response.EnsureSuccessStatusCode();
+			var jsonString = await response.Content.ReadAsStringAsync();
+			currentOrders = JsonConvert.DeserializeObject<Root2>(jsonString);
+			return currentOrders.results;
 		}
 
 		private static void CheckItem(StringBuilder linkItem, int delayAtCheckItem, KeyValuePair<string, Item> itemFromAPI)
@@ -167,27 +215,87 @@ namespace MonitoringCsGoMarket.Implementations
 						bool ItemAddedBlock = false;
 						while (!ItemAddedBlock)
 						{
-							ItemAddedBlock = _currentShoppingBlockList.TryAdd(linkItem.ToString().ToLower(), maxCostAutoBuy + 0.03m);
+							ItemAddedBlock = _currentShoppingBlockList.TryAdd(linkItem.ToString().ToLower(), maxCostAutoBuy + 0.01m);
 						}
 						_userManager.SendUserMessage("Предмет добавлен в блок");
 						return;
 					}
 				}
 
-				CreateBuyItem(linkItem, maxCostAutoBuy + 0.03m);
+				CreateBuyItem(linkItem, maxCostAutoBuy + 0.01m);
 				_userManager.SendUserMessage("Предмет добавлен в список покупок");
 				bool ItemAdded = false;
 				while (!ItemAdded)
 				{
-					ItemAdded = _currentShoppingList.TryAdd(linkItem.ToString().ToLower(), maxCostAutoBuy + 0.03m);
+					ItemAdded = _currentShoppingList.TryAdd(linkItem.ToString().ToLower(), maxCostAutoBuy + 0.01m);
 				}
 			}
 			else
 			{
 				if (_currentShoppingList[linkItem.ToString().ToLower()] < maxCostAutoBuy)
 				{
-					CreateBuyItem(linkItem, maxCostAutoBuy + 0.03m);
-					_currentShoppingList[linkItem.ToString().ToLower()] = maxCostAutoBuy + 0.03m;
+					CreateBuyItem(linkItem, maxCostAutoBuy + 0.01m);
+					_currentShoppingList[linkItem.ToString().ToLower()] = maxCostAutoBuy + 0.01m;
+				}
+			}
+		}
+
+		private static decimal GetDecimalByApiPrice(int value)
+		{
+			var dec1 = value.ToString().Substring(0, value.ToString().Length - 2);
+			var dec2 = value.ToString().Substring(value.ToString().Length - 2);
+			return decimal.Parse(dec1 + "," + dec2);
+		}
+
+		private static void CheckItem(StringBuilder linkItem, Result result)
+		{
+			Thread.Sleep(300);
+			decimal maxCostAutoBuy = GetDecimalByApiPrice(result.buy_offers.best_offer);
+			string curentType = result.info.type;
+			decimal curMinCost = GetDecimalByApiPrice(result.sell_offers.best_offer);
+			if (!NeedAddItemToCurrentShoppingList(linkItem, maxCostAutoBuy, curentType, curMinCost)) return;
+			if (_currentShoppingBlockList.ContainsKey(linkItem.ToString().ToLower())) return;
+			//var CheckSteamPriceResult = CheckSteamPrice(linkItem, maxCostAutoBuy, curentType, curMinCost);
+			if (!_currentShoppingList.ContainsKey(linkItem.ToString().ToLower()))
+			{
+				//if (CheckSteamPriceResult == StatusCheckSteamPrice.DoNotBuy) return;
+				_userManager.SendUserMessage("");
+				_userManager.SendUserMessage(linkItem.ToString());
+				_userManager.SendUserMessage($"maxCost = {maxCostAutoBuy}");
+				_userManager.SendUserMessage($"CurMinCost = {curMinCost}");
+				//if (CheckSteamPriceResult == StatusCheckSteamPrice.NeedVerification)
+				//{
+				//	_userManager.SendUserMessage($"Требуется проверка цены в steam!!!");
+				//}
+
+				if (_testMode == false)
+				{
+					if (!GetPermissionFromAdmin())
+					{
+						bool ItemAddedBlock = false;
+						while (!ItemAddedBlock)
+						{
+							ItemAddedBlock = _currentShoppingBlockList.TryAdd(linkItem.ToString().ToLower(), maxCostAutoBuy + 0.01m);
+						}
+						_userManager.SendUserMessage("Предмет добавлен в блок");
+						return;
+					}
+				}
+
+				CreateBuyItem(linkItem, maxCostAutoBuy + 0.01m);
+				_userManager.SendUserMessage("Предмет добавлен в список покупок");
+				bool ItemAdded = false;
+				while (!ItemAdded)
+				{
+					ItemAdded = _currentShoppingList.TryAdd(linkItem.ToString().ToLower(), maxCostAutoBuy + 0.01m);
+				}
+			}
+			else
+			{
+				if (_currentShoppingList[linkItem.ToString().ToLower()] < maxCostAutoBuy)
+				{
+					CreateBuyItem(linkItem, maxCostAutoBuy + 0.01m);
+					_currentShoppingList[linkItem.ToString().ToLower()] = maxCostAutoBuy + 0.01m;
 				}
 			}
 		}
@@ -284,27 +392,27 @@ namespace MonitoringCsGoMarket.Implementations
 						bool ItemAddedBlock = false;
 						while (!ItemAddedBlock)
 						{
-							ItemAddedBlock = _currentShoppingBlockList.TryAdd(linkItem.ToString().ToLower(), maxCostAutoBuy + 0.03m);
+							ItemAddedBlock = _currentShoppingBlockList.TryAdd(linkItem.ToString().ToLower(), maxCostAutoBuy + 0.01m);
 						}
 						_userManager.SendUserMessage("Предмет добавлен в блок");
 						return;
 					}
 				}
 
-				CreateBuyItem(linkItem, maxCostAutoBuy + 0.03m);
+				CreateBuyItem(linkItem, maxCostAutoBuy + 0.01m);
 				_userManager.SendUserMessage("Предмет добавлен в список покупок");
 				bool ItemAdded = false;
 				while (!ItemAdded)
 				{
-					ItemAdded = _currentShoppingList.TryAdd(linkItem.ToString().ToLower(), maxCostAutoBuy + 0.03m);
+					ItemAdded = _currentShoppingList.TryAdd(linkItem.ToString().ToLower(), maxCostAutoBuy + 0.01m);
 				}
 			}
 			else
 			{
 				if (_currentShoppingList[linkItem.ToString().ToLower()] < maxCostAutoBuy)
 				{
-					CreateBuyItem(linkItem, maxCostAutoBuy + 0.03m);
-					_currentShoppingList[linkItem.ToString().ToLower()] = maxCostAutoBuy + 0.03m;
+					CreateBuyItem(linkItem, maxCostAutoBuy + 0.01m);
+					_currentShoppingList[linkItem.ToString().ToLower()] = maxCostAutoBuy + 0.01m;
 				}
 			}
 		}
