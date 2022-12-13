@@ -147,7 +147,7 @@ namespace MonitoringCsGoMarket.Implementations
 				foreach (var item in allItemFromApi)
 				{
 					CheckItem(
-						new StringBuilder(_currentShoppingList.Keys.Where(k => k.Contains(item.classid)).First())
+						new StringBuilder(_currentShoppingList.Keys.Where(k => k.Contains(item.classid) && k.Contains(item.instanceid)).First())
 						, item);
 				}
 
@@ -251,7 +251,7 @@ namespace MonitoringCsGoMarket.Implementations
 		{
 			Thread.Sleep(300);
 			decimal maxCostAutoBuy = GetDecimalByApiPrice(result.buy_offers.best_offer);
-			string curentType = result.info.type;
+			string curentType = result.info.quality;
 			decimal curMinCost = GetDecimalByApiPrice(result.sell_offers.best_offer);
 			if (!NeedAddItemToCurrentShoppingList(linkItem, maxCostAutoBuy, curentType, curMinCost)) return;
 			if (_currentShoppingBlockList.ContainsKey(linkItem.ToString().ToLower())) return;
